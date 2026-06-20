@@ -5,7 +5,6 @@ struct FlightListView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header
             HStack {
                 Text("FLT")
                     .frame(width: 40, alignment: .leading)
@@ -43,9 +42,7 @@ struct FlightRow: View {
     @ObservedObject var vm: TaskViewModel
     @State private var showDetail = false
 
-    var flightNumber: String {
-        "FC\(String(format: "%03d", index))"
-    }
+    var flightNumber: String { "FC\(String(format: "%03d", index))" }
 
     var etaText: String {
         let hours = task.hoursUntilDeadline
@@ -115,6 +112,8 @@ struct FlightRow: View {
 struct FlightDetailPanel: View {
     let task: FlightTask
     @ObservedObject var vm: TaskViewModel
+    @StateObject private var calendarManager = CalendarManager()
+    @State private var showCalendarAlert = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -122,6 +121,7 @@ struct FlightDetailPanel: View {
                 .font(.system(size: 12, design: .monospaced))
                 .foregroundColor(.white.opacity(0.75))
 
+            // Deadline + calendar button
             HStack {
                 Label(task.deadline.formatted(date: .abbreviated, time: .shortened),
                       systemImage: "clock")
@@ -130,6 +130,35 @@ struct FlightDetailPanel: View {
 
                 Spacer()
 
+                Button {
+                    calendarManager.requestAccessAndAddEvent(for: task)
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "calendar.badge.plus")
+                        Text("ADD TO CAL")
+                    }
+                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(Color.blue.opacity(0.6))
+                    .cornerRadius(4)
+                }
+            }
+
+            // Calendar result toast
+            if let result = calendarManager.lastResult {
+                HStack(spacing: 6) {
+                    Image(systemName: result == .success("") || resultIsSuccess(result) ? "checkmark.circle" : "exclamationmark.triangle")
+                    Text(resultMessage(result))
+                }
+                .font(.system(size: 10, design: .monospaced))
+                .foregroundColor(resultIsSuccess(result) ? .green : .orange)
+                .transition(.opacity)
+            }
+
+            // Action buttons
+            HStack(spacing: 8) {
                 if !task.isLanding {
                     Button("CLEAR FOR LANDING") {
                         vm.setLanding(task)
@@ -138,11 +167,12 @@ struct FlightDetailPanel: View {
                     .foregroundColor(.black)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
-                    .background(task.urgencyColor)
+                    .background(vm.landingTask == nil ? task.urgencyColor : Color.gray)
                     .cornerRadius(4)
+                    .disabled(vm.landingTask != nil)
                 } else {
-                    Button("LANDED ✓") {
-                        vm.completeTask(task)
+                    Button("LANDED ✓  INITIATE") {
+                        vm.initiateLanding(task)
                     }
                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                     .foregroundColor(.black)
@@ -150,6 +180,17 @@ struct FlightDetailPanel: View {
                     .padding(.vertical, 5)
                     .background(Color.yellow)
                     .cornerRadius(4)
+                    .disabled(vm.landingAnimationID != nil)
+                }
+
+                Spacer()
+
+                Button {
+                    vm.deleteTask(task)
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 12))
+                        .foregroundColor(.red.opacity(0.6))
                 }
             }
         }
@@ -157,5 +198,17 @@ struct FlightDetailPanel: View {
         .padding(.vertical, 10)
         .background(Color.black.opacity(0.3))
         .transition(.opacity.combined(with: .move(edge: .top)))
+    }
+
+    private func resultIsSuccess(_ result: CalendarManager.CalendarResult) -> Bool {
+        if case .success = result { return true }
+        return false
+    }
+
+    private func resultMessage(_ result: CalendarManager.CalendarResult) -> String {
+        switch result {
+        case .success(let msg): return msg
+        case .failure(let msg): return msg
+        }
     }
 }

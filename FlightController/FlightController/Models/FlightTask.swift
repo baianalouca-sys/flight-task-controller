@@ -8,6 +8,7 @@ struct FlightTask: Identifiable, Codable {
     var deadline: Date
     var isLanding: Bool = false
     var isCompleted: Bool = false
+    var completedAt: Date? = nil
 
     var hoursUntilDeadline: Double {
         deadline.timeIntervalSinceNow / 3600

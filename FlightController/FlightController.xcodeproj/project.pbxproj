@@ -14,6 +14,8 @@
 		B005 /* RadarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A005 /* RadarView.swift */; };
 		B006 /* FlightListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A006 /* FlightListView.swift */; };
 		B007 /* AddTaskView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A007 /* AddTaskView.swift */; };
+		B008 /* ArchiveView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A008 /* ArchiveView.swift */; };
+		B009 /* CalendarManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A009 /* CalendarManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -24,11 +26,13 @@
 		A005 /* RadarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadarView.swift; sourceTree = "<group>"; };
 		A006 /* FlightListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlightListView.swift; sourceTree = "<group>"; };
 		A007 /* AddTaskView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddTaskView.swift; sourceTree = "<group>"; };
+		A008 /* ArchiveView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchiveView.swift; sourceTree = "<group>"; };
+		A009 /* CalendarManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarManager.swift; sourceTree = "<group>"; };
 		PROD /* FlightController.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FlightController.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		FR01 = {
+		FR01 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -41,18 +45,19 @@
 		GRP0 = {
 			isa = PBXGroup;
 			children = (
-				GRP1,
-				GRP2,
+				GRP1 /* FlightController */,
+				GRP2 /* Products */,
 			);
 			sourceTree = "<group>";
 		};
 		GRP1 /* FlightController */ = {
 			isa = PBXGroup;
 			children = (
-				A001,
-				GRP3,
-				GRP4,
-				GRP5,
+				A001 /* FlightControllerApp.swift */,
+				A009 /* CalendarManager.swift */,
+				GRP3 /* Models */,
+				GRP4 /* ViewModels */,
+				GRP5 /* Views */,
 			);
 			path = FlightController;
 			sourceTree = "<group>";
@@ -60,7 +65,7 @@
 		GRP2 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				PROD,
+				PROD /* FlightController.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -68,7 +73,7 @@
 		GRP3 /* Models */ = {
 			isa = PBXGroup;
 			children = (
-				A003,
+				A003 /* FlightTask.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -76,7 +81,7 @@
 		GRP4 /* ViewModels */ = {
 			isa = PBXGroup;
 			children = (
-				A004,
+				A004 /* TaskViewModel.swift */,
 			);
 			path = ViewModels;
 			sourceTree = "<group>";
@@ -84,10 +89,11 @@
 		GRP5 /* Views */ = {
 			isa = PBXGroup;
 			children = (
-				A002,
-				A005,
-				A006,
-				A007,
+				A002 /* ContentView.swift */,
+				A005 /* RadarView.swift */,
+				A006 /* FlightListView.swift */,
+				A007 /* AddTaskView.swift */,
+				A008 /* ArchiveView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -97,11 +103,11 @@
 /* Begin PBXNativeTarget section */
 		TGT1 /* FlightController */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = BCL1;
+			buildConfigurationList = BCL1 /* Build configuration list for PBXNativeTarget "FlightController" */;
 			buildPhases = (
-				SRC1,
-				FR01,
-				RES1,
+				SRC1 /* Sources */,
+				FR01 /* Frameworks */,
+				RES1 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -109,7 +115,7 @@
 			);
 			name = FlightController;
 			productName = FlightController;
-			productReference = PROD;
+			productReference = PROD /* FlightController.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -127,7 +133,7 @@
 					};
 				};
 			};
-			buildConfigurationList = BCL0;
+			buildConfigurationList = BCL0 /* Build configuration list for PBXProject "FlightController" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -136,17 +142,17 @@
 				Base,
 			);
 			mainGroup = GRP0;
-			productRefGroup = GRP2;
+			productRefGroup = GRP2 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				TGT1,
+				TGT1 /* FlightController */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		RES1 = {
+		RES1 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -156,17 +162,19 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		SRC1 = {
+		SRC1 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				B001,
-				B002,
-				B003,
-				B004,
-				B005,
-				B006,
-				B007,
+				B001 /* FlightControllerApp.swift in Sources */,
+				B002 /* ContentView.swift in Sources */,
+				B003 /* FlightTask.swift in Sources */,
+				B004 /* TaskViewModel.swift in Sources */,
+				B005 /* RadarView.swift in Sources */,
+				B006 /* FlightListView.swift in Sources */,
+				B007 /* AddTaskView.swift in Sources */,
+				B008 /* ArchiveView.swift in Sources */,
+				B009 /* CalendarManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -297,10 +305,13 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
+				DEVELOPMENT_TEAM = 2S6R5XRHAA;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Flight Controller adds your task deadlines as Calendar events with reminders.";
+				INFOPLIST_KEY_NSCalendarsUsageDescription = "Flight Controller adds your task deadlines as Calendar events with reminders.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -324,10 +335,13 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
+				DEVELOPMENT_TEAM = 2S6R5XRHAA;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Flight Controller adds your task deadlines as Calendar events with reminders.";
+				INFOPLIST_KEY_NSCalendarsUsageDescription = "Flight Controller adds your task deadlines as Calendar events with reminders.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -349,8 +363,8 @@
 		BCL0 /* Build configuration list for PBXProject "FlightController" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				BC01,
-				BC02,
+				BC01 /* Debug */,
+				BC02 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -358,8 +372,8 @@
 		BCL1 /* Build configuration list for PBXNativeTarget "FlightController" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				BC03,
-				BC04,
+				BC03 /* Debug */,
+				BC04 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

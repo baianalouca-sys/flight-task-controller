@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @StateObject private var vm = TaskViewModel()
     @State private var showAddTask = false
+    @State private var showArchive = false
 
     var body: some View {
         ZStack {
@@ -22,14 +23,34 @@ struct ContentView: View {
 
                     Spacer()
 
+                    // Archive button
+                    Button {
+                        showArchive = true
+                    } label: {
+                        HStack(spacing: 5) {
+                            Image(systemName: "clock.arrow.circlepath")
+                                .font(.system(size: 12))
+                            if !vm.archivedTasks.isEmpty {
+                                Text("\(vm.archivedTasks.count)")
+                                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            }
+                        }
+                        .foregroundColor(.green.opacity(0.7))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Color.green.opacity(0.1))
+                        .cornerRadius(6)
+                    }
+
                     HStack(spacing: 6) {
                         Circle()
                             .fill(.green)
                             .frame(width: 6, height: 6)
-                        Text("\(vm.sortedTasks.count)/\(vm.maxTasks) ACTIVE")
+                        Text("\(vm.sortedTasks.count)/\(vm.maxTasks)")
                             .font(.system(size: 10, weight: .bold, design: .monospaced))
                             .foregroundColor(.green.opacity(0.7))
                     }
+                    .padding(.leading, 8)
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
@@ -49,7 +70,7 @@ struct ContentView: View {
                     Spacer()
                     if let landing = vm.landingTask {
                         HStack(spacing: 4) {
-                            Image(systemName: "airplane.arrival")
+                            Image(systemName: vm.landingAnimationID != nil ? "airplane.arrival" : "airplane")
                                 .font(.system(size: 10))
                                 .foregroundColor(.yellow)
                             Text(landing.title)
@@ -66,7 +87,7 @@ struct ContentView: View {
                 // Flight list
                 FlightListView(vm: vm)
 
-                // Add button
+                // Add / full indicator
                 if vm.canAddTask {
                     Button(action: { showAddTask = true }) {
                         HStack {
@@ -80,8 +101,8 @@ struct ContentView: View {
                         .background(Color.green)
                     }
                 } else {
-                    Text("AIRSPACE FULL — MAX \(vm.maxTasks) FLIGHTS")
-                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    Text("AIRSPACE FULL — LAND A FLIGHT TO ADD MORE")
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
                         .foregroundColor(.red.opacity(0.7))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
@@ -92,6 +113,9 @@ struct ContentView: View {
         .preferredColorScheme(.dark)
         .sheet(isPresented: $showAddTask) {
             AddTaskView(vm: vm)
+        }
+        .sheet(isPresented: $showArchive) {
+            ArchiveView(vm: vm)
         }
     }
 

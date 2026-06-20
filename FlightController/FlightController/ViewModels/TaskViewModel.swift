@@ -3,11 +3,13 @@ import Combine
 
 class TaskViewModel: ObservableObject {
     @Published var tasks: [FlightTask] = []
+    @Published var archivedTasks: [FlightTask] = []
     @Published var selectedTaskID: UUID? = nil
+    @Published var landingAnimationID: UUID? = nil  // triggers radar landing sequence
 
     let maxTasks = 5
 
-    var canAddTask: Bool { tasks.count < maxTasks }
+    var canAddTask: Bool { tasks.filter { !$0.isCompleted }.count < maxTasks }
 
     var sortedTasks: [FlightTask] {
         tasks.filter { !$0.isCompleted }
@@ -27,16 +29,27 @@ class TaskViewModel: ObservableObject {
         tasks.append(task)
     }
 
+    // Called by radar after animation completes
     func completeTask(_ task: FlightTask) {
         guard let idx = tasks.firstIndex(where: { $0.id == task.id }) else { return }
-        tasks[idx].isCompleted = true
-        tasks[idx].isLanding = false
+        var completed = tasks[idx]
+        completed.isCompleted = true
+        completed.isLanding = false
+        completed.completedAt = Date()
+        tasks.remove(at: idx)
+        archivedTasks.insert(completed, at: 0)
+        landingAnimationID = nil
+        selectedTaskID = nil
+    }
+
+    // Called from UI — triggers the radar animation, which then calls completeTask
+    func initiateLanding(_ task: FlightTask) {
+        landingAnimationID = task.id
     }
 
     func setLanding(_ task: FlightTask) {
-        for i in tasks.indices {
-            tasks[i].isLanding = false
-        }
+        guard landingTask == nil || landingTask?.id == task.id else { return }
+        for i in tasks.indices { tasks[i].isLanding = false }
         if let idx = tasks.firstIndex(where: { $0.id == task.id }) {
             tasks[idx].isLanding = true
         }
@@ -44,6 +57,10 @@ class TaskViewModel: ObservableObject {
 
     func deleteTask(_ task: FlightTask) {
         tasks.removeAll { $0.id == task.id }
+    }
+
+    func clearArchive() {
+        archivedTasks.removeAll()
     }
 
     private func loadSampleTasks() {
