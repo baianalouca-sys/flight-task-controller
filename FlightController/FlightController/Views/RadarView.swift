@@ -33,17 +33,15 @@ struct RadarView: View {
                 ForEach([0.25, 0.5, 0.75, 1.0], id: \.self) { f in
                     Circle()
                         .stroke(radarColor.opacity(0.2), lineWidth: 1)
-                        .frame(width: radius * 2 * f, height: radius * 2 * f)
+                        .frame(width: radius * 2 * CGFloat(f), height: radius * 2 * CGFloat(f))
                         .position(center)
                 }
 
                 // Ring distance labels
-                ForEach([("1d", 0.25), ("3d", 0.5), ("5d", 0.75), ("7d", 1.0)], id: \.0) { label, f in
-                    Text(label)
-                        .font(.system(size: 8, design: .monospaced))
-                        .foregroundColor(radarColor.opacity(0.3))
-                        .position(x: center.x + radius * f - 4, y: center.y - 6)
-                }
+                ringLabel("1d", fraction: 0.25, center: center, radius: radius)
+                ringLabel("3d", fraction: 0.5,  center: center, radius: radius)
+                ringLabel("5d", fraction: 0.75, center: center, radius: radius)
+                ringLabel("7d", fraction: 1.0,  center: center, radius: radius)
 
                 // Crosshairs
                 Path { p in
@@ -83,7 +81,7 @@ struct RadarView: View {
                 // Static planes (skip the one currently animating)
                 ForEach(vm.sortedTasks.filter { $0.id != vm.landingAnimationID }) { task in
                     let angle = planeAngles[task.id] ?? stableAngle(for: task)
-                    let dist = radius * (1.0 - task.approachFraction * 0.85)
+                    let dist = radius * CGFloat(1.0 - task.approachFraction * 0.85)
                     let x = center.x + dist * CGFloat(cos(angle * .pi / 180))
                     let y = center.y + dist * CGFloat(sin(angle * .pi / 180))
                     PlaneMarker(task: task, isSelected: vm.selectedTaskID == task.id,
@@ -189,6 +187,13 @@ struct RadarView: View {
     }
 
     // MARK: - Helpers
+
+    private func ringLabel(_ text: String, fraction: CGFloat, center: CGPoint, radius: CGFloat) -> some View {
+        Text(text)
+            .font(.system(size: 8, design: .monospaced))
+            .foregroundColor(radarColor.opacity(0.3))
+            .position(x: center.x + radius * fraction - 4, y: center.y - 6)
+    }
 
     private func stableAngle(for task: FlightTask) -> Double {
         Double(abs(task.id.hashValue) % 360)
