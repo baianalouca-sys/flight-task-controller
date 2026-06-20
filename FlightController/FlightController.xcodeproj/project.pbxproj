@@ -16,6 +16,7 @@
 		B007 /* AddTaskView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A007 /* AddTaskView.swift */; };
 		B008 /* ArchiveView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A008 /* ArchiveView.swift */; };
 		B009 /* CalendarManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A009 /* CalendarManager.swift */; };
+		B010 /* CalendarEventEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A010 /* CalendarEventEditor.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -28,6 +29,7 @@
 		A007 /* AddTaskView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddTaskView.swift; sourceTree = "<group>"; };
 		A008 /* ArchiveView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchiveView.swift; sourceTree = "<group>"; };
 		A009 /* CalendarManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarManager.swift; sourceTree = "<group>"; };
+		A010 /* CalendarEventEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarEventEditor.swift; sourceTree = "<group>"; };
 		PROD /* FlightController.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FlightController.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -94,6 +96,7 @@
 				A006 /* FlightListView.swift */,
 				A007 /* AddTaskView.swift */,
 				A008 /* ArchiveView.swift */,
+				A010 /* CalendarEventEditor.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -175,6 +178,7 @@
 				B007 /* AddTaskView.swift in Sources */,
 				B008 /* ArchiveView.swift in Sources */,
 				B009 /* CalendarManager.swift in Sources */,
+				B010 /* CalendarEventEditor.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

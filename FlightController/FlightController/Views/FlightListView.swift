@@ -112,8 +112,7 @@ struct FlightRow: View {
 struct FlightDetailPanel: View {
     let task: FlightTask
     @ObservedObject var vm: TaskViewModel
-    @StateObject private var calendarManager = CalendarManager()
-    @State private var showCalendarAlert = false
+    @StateObject private var cal = CalendarManager()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -131,7 +130,7 @@ struct FlightDetailPanel: View {
                 Spacer()
 
                 Button {
-                    calendarManager.requestAccessAndAddEvent(for: task)
+                    cal.requestAndPrepareEvent(for: task)
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "calendar.badge.plus")
@@ -146,15 +145,12 @@ struct FlightDetailPanel: View {
                 }
             }
 
-            // Calendar result toast
-            if let result = calendarManager.lastResult {
-                HStack(spacing: 6) {
-                    Image(systemName: result == .success("") || resultIsSuccess(result) ? "checkmark.circle" : "exclamationmark.triangle")
-                    Text(resultMessage(result))
-                }
-                .font(.system(size: 10, design: .monospaced))
-                .foregroundColor(resultIsSuccess(result) ? .green : .orange)
-                .transition(.opacity)
+            // Inline error if calendar access denied
+            if let err = cal.errorMessage {
+                Text(err)
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundColor(.orange)
+                    .transition(.opacity)
             }
 
             // Action buttons
@@ -198,17 +194,11 @@ struct FlightDetailPanel: View {
         .padding(.vertical, 10)
         .background(Color.black.opacity(0.3))
         .transition(.opacity.combined(with: .move(edge: .top)))
-    }
-
-    private func resultIsSuccess(_ result: CalendarManager.CalendarResult) -> Bool {
-        if case .success = result { return true }
-        return false
-    }
-
-    private func resultMessage(_ result: CalendarManager.CalendarResult) -> String {
-        switch result {
-        case .success(let msg): return msg
-        case .failure(let msg): return msg
+        // Native iOS Calendar editor — user picks calendar, edits, saves
+        .sheet(isPresented: $cal.showEditor) {
+            if let event = cal.pendingEvent {
+                CalendarEventEditor(store: cal.store, event: event, isPresented: $cal.showEditor)
+            }
         }
     }
 }
