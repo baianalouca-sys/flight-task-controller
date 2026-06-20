@@ -7,41 +7,42 @@ struct RadarView: View {
     @State private var sweepAngle: Double = 0
     @State private var planeAngles: [UUID: Double] = [:]
 
-    // Landing animation
     @State private var landingPhase: LandingPhase = .done
-    @State private var landingProgress: Double = 0   // 0→1: radar pos → left threshold
-    @State private var rolloutProgress: Double = 0   // 0→1: threshold → right fade point
+    @State private var landingProgress: Double = 0
+    @State private var rolloutProgress: Double = 0
     @State private var landingOpacity: Double = 1.0
     @State private var landingStartPos: CGPoint = .zero
 
     let radarColor = Color(red: 0.0, green: 0.8, blue: 0.3)
-    let bgColor = Color(red: 0.04, green: 0.09, blue: 0.06)
+    let bgColor    = Color(red: 0.04, green: 0.09, blue: 0.06)
 
     var body: some View {
         GeometryReader { geo in
-            let size = min(geo.size.width, geo.size.height)
+            let size   = min(geo.size.width, geo.size.height)
             let center = CGPoint(x: geo.size.width / 2, y: geo.size.height / 2)
             let radius = size / 2 - 16
 
             ZStack {
+                // Background circle
                 Circle()
                     .fill(bgColor)
                     .frame(width: size - 32, height: size - 32)
                     .position(center)
 
-                // Rings
+                // Range rings
                 ForEach([0.25, 0.5, 0.75, 1.0], id: \.self) { f in
                     Circle()
                         .stroke(radarColor.opacity(0.2), lineWidth: 1)
-                        .frame(width: radius * 2 * CGFloat(f), height: radius * 2 * CGFloat(f))
+                        .frame(width: radius * 2 * CGFloat(f),
+                               height: radius * 2 * CGFloat(f))
                         .position(center)
                 }
 
-                // Ring distance labels
-                ringLabel("1d", fraction: 0.25, center: center, radius: radius)
-                ringLabel("3d", fraction: 0.5,  center: center, radius: radius)
-                ringLabel("5d", fraction: 0.75, center: center, radius: radius)
-                ringLabel("7d", fraction: 1.0,  center: center, radius: radius)
+                // Ring labels — plain function calls, no ForEach needed
+                ringLabel("1d", f: 0.25, center: center, radius: radius)
+                ringLabel("3d", f: 0.50, center: center, radius: radius)
+                ringLabel("5d", f: 0.75, center: center, radius: radius)
+                ringLabel("7d", f: 1.00, center: center, radius: radius)
 
                 // Crosshairs
                 Path { p in
@@ -52,7 +53,7 @@ struct RadarView: View {
                 }
                 .stroke(radarColor.opacity(0.12), lineWidth: 1)
 
-                // Sweep wedge
+                // Radar sweep
                 SweepShape(angle: sweepAngle)
                     .fill(AngularGradient(
                         gradient: Gradient(colors: [radarColor.opacity(0.0), radarColor.opacity(0.35)]),
@@ -62,9 +63,9 @@ struct RadarView: View {
                     ))
                     .frame(width: radius * 2, height: radius * 2)
                     .position(center)
-                    .clipShape(Circle().scale((size - 32) / size))
+                    .clipShape(Circle().scale(CGFloat((size - 32) / size)))
 
-                // Sweep line
+                // Sweep leading edge
                 Path { p in
                     p.move(to: center)
                     p.addLine(to: CGPoint(
@@ -78,15 +79,16 @@ struct RadarView: View {
                 RunwayView(radarColor: radarColor)
                     .position(center)
 
-                // Static planes (skip the one currently animating)
+                // Static planes
                 ForEach(vm.sortedTasks.filter { $0.id != vm.landingAnimationID }) { task in
                     let angle = planeAngles[task.id] ?? stableAngle(for: task)
-                    let dist = radius * CGFloat(1.0 - task.approachFraction * 0.85)
-                    let x = center.x + dist * CGFloat(cos(angle * .pi / 180))
-                    let y = center.y + dist * CGFloat(sin(angle * .pi / 180))
-                    PlaneMarker(task: task, isSelected: vm.selectedTaskID == task.id,
-                                approachAngle: angle + 180) // face toward center
-                        .position(x: x, y: y)
+                    let dist  = radius * CGFloat(1.0 - task.approachFraction * 0.85)
+                    let px    = center.x + dist * CGFloat(cos(angle * .pi / 180))
+                    let py    = center.y + dist * CGFloat(sin(angle * .pi / 180))
+                    PlaneMarker(task: task,
+                                isSelected: vm.selectedTaskID == task.id,
+                                approachAngle: angle + 180)
+                        .position(x: px, y: py)
                         .onTapGesture {
                             withAnimation(.easeInOut(duration: 0.2)) {
                                 vm.selectedTaskID = vm.selectedTaskID == task.id ? nil : task.id
@@ -94,10 +96,16 @@ struct RadarView: View {
                         }
                 }
 
-                // Animated landing plane
-                if let lid = vm.landingAnimationID,
-                   let task = vm.tasks.first(where: { $0.id == lid }) {
-                    landingPlaneView(task: task, center: center, radius: radius)
+                // Animated landing plane — position computed outside ViewBuilder
+                if vm.landingAnimationID != nil {
+                    let pos = landingPosition(center: center)
+                    Image(systemName: "airplane")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(.yellow)
+                        .rotationEffect(.degrees(90))
+                        .shadow(color: Color.yellow.opacity(0.9), radius: 8)
+                        .position(pos)
+                        .opacity(landingOpacity)
                 }
             }
         }
@@ -108,35 +116,20 @@ struct RadarView: View {
         }
     }
 
-    // MARK: - Landing plane view
+    // MARK: - Computed landing position (imperative — safe outside ViewBuilder)
 
-    @ViewBuilder
-    private func landingPlaneView(task: FlightTask, center: CGPoint, radius: CGFloat) -> some View {
-        // Threshold = left entry to runway
+    private func landingPosition(center: CGPoint) -> CGPoint {
         let thresholdX = center.x - 44
         let thresholdY = center.y
-
-        let currentX: CGFloat
-        let currentY: CGFloat
-
         switch landingPhase {
         case .approach:
-            // Lerp from saved start pos to threshold
-            currentX = landingStartPos.x + (thresholdX - landingStartPos.x) * landingProgress
-            currentY = landingStartPos.y + (thresholdY - landingStartPos.y) * landingProgress
+            return CGPoint(
+                x: landingStartPos.x + (thresholdX - landingStartPos.x) * CGFloat(landingProgress),
+                y: landingStartPos.y + (thresholdY - landingStartPos.y) * CGFloat(landingProgress)
+            )
         case .rollout, .done:
-            // Roll along runway rightward past center
-            currentX = thresholdX + rolloutProgress * 120
-            currentY = thresholdY
+            return CGPoint(x: thresholdX + CGFloat(rolloutProgress) * 120, y: thresholdY)
         }
-
-        Image(systemName: "airplane")
-            .font(.system(size: 18, weight: .bold))
-            .foregroundColor(.yellow)
-            .rotationEffect(.degrees(90)) // pointing right
-            .shadow(color: Color.yellow.opacity(0.9), radius: 8)
-            .position(x: currentX, y: currentY)
-            .opacity(landingOpacity)
     }
 
     // MARK: - Animation sequence
@@ -145,38 +138,30 @@ struct RadarView: View {
         guard let lid = vm.landingAnimationID,
               let task = vm.tasks.first(where: { $0.id == lid }) else { return }
 
-        // Compute screen position from angle + approachFraction.
-        // We estimate the radar radius from the screen width (matches GeometryReader logic).
-        let screenW = UIScreen.main.bounds.width
-        let radarSize = min(screenW, 300.0)   // matches .frame(height: 300) in ContentView
-        let center = CGPoint(x: screenW / 2, y: radarSize / 2)
-        let radius = radarSize / 2 - 16
+        let screenW   = UIScreen.main.bounds.width
+        let radarSize = min(screenW, 300.0)
+        let center    = CGPoint(x: screenW / 2, y: radarSize / 2)
+        let radius    = radarSize / 2 - 16
 
         let angle = planeAngles[task.id] ?? stableAngle(for: task)
-        let dist = radius * (1.0 - task.approachFraction * 0.85)
+        let dist  = radius * CGFloat(1.0 - task.approachFraction * 0.85)
         landingStartPos = CGPoint(
             x: center.x + dist * CGFloat(cos(angle * .pi / 180)),
             y: center.y + dist * CGFloat(sin(angle * .pi / 180))
         )
 
-        landingPhase = .approach
+        landingPhase    = .approach
         landingProgress = 0
         rolloutProgress = 0
-        landingOpacity = 1.0
+        landingOpacity  = 1.0
 
-        // Phase 1: glide to runway threshold (2s)
-        withAnimation(.easeIn(duration: 2.0)) {
-            landingProgress = 1.0
-        }
+        withAnimation(.easeIn(duration: 2.0)) { landingProgress = 1.0 }
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
             landingPhase = .rollout
-            // Phase 2: roll along runway rightward + fade
-            withAnimation(.linear(duration: 1.2)) {
-                rolloutProgress = 1.0
-            }
-            withAnimation(.easeOut(duration: 0.8).delay(0.4)) {
-                landingOpacity = 0
-            }
+            withAnimation(.linear(duration: 1.2))  { rolloutProgress = 1.0 }
+            withAnimation(.easeOut(duration: 0.8).delay(0.4)) { landingOpacity = 0 }
+
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.3) {
                 landingPhase = .done
                 if let t = vm.tasks.first(where: { $0.id == vm.landingAnimationID }) {
@@ -188,11 +173,11 @@ struct RadarView: View {
 
     // MARK: - Helpers
 
-    private func ringLabel(_ text: String, fraction: CGFloat, center: CGPoint, radius: CGFloat) -> some View {
+    private func ringLabel(_ text: String, f: CGFloat, center: CGPoint, radius: CGFloat) -> some View {
         Text(text)
             .font(.system(size: 8, design: .monospaced))
             .foregroundColor(radarColor.opacity(0.3))
-            .position(x: center.x + radius * fraction - 4, y: center.y - 6)
+            .position(x: center.x + radius * f - 4, y: center.y - 6)
     }
 
     private func stableAngle(for task: FlightTask) -> Double {
@@ -200,10 +185,8 @@ struct RadarView: View {
     }
 
     private func assignAngles() {
-        for task in vm.sortedTasks {
-            if planeAngles[task.id] == nil {
-                planeAngles[task.id] = stableAngle(for: task)
-            }
+        for task in vm.sortedTasks where planeAngles[task.id] == nil {
+            planeAngles[task.id] = stableAngle(for: task)
         }
     }
 
@@ -214,42 +197,34 @@ struct RadarView: View {
     }
 }
 
-// MARK: - Runway (horizontal)
+// MARK: - Runway
 
 struct RunwayView: View {
     let radarColor: Color
 
     var body: some View {
         ZStack {
-            // Surface
             RoundedRectangle(cornerRadius: 2)
                 .fill(Color.white.opacity(0.07))
                 .frame(width: 88, height: 12)
-
-            // Edges
             RoundedRectangle(cornerRadius: 2)
                 .stroke(radarColor.opacity(0.55), lineWidth: 1)
                 .frame(width: 88, height: 12)
-
-            // Centre dashes
             HStack(spacing: 6) {
-                ForEach(0..<4) { _ in
+                ForEach(0..<4, id: \.self) { _ in
                     Rectangle()
                         .fill(radarColor.opacity(0.65))
                         .frame(width: 8, height: 2)
                 }
             }
-
-            // Threshold bars (left end)
             VStack(spacing: 2) {
-                ForEach(0..<3) { _ in
+                ForEach(0..<3, id: \.self) { _ in
                     Rectangle()
                         .fill(radarColor.opacity(0.5))
                         .frame(width: 2, height: 4)
                 }
             }
             .offset(x: -40)
-
             Text("RWY")
                 .font(.system(size: 7, weight: .bold, design: .monospaced))
                 .foregroundColor(radarColor.opacity(0.6))
@@ -272,18 +247,20 @@ struct SweepShape: Shape {
         let r = min(rect.width, rect.height) / 2
         p.move(to: c)
         p.addArc(center: c, radius: r,
-                 startAngle: .degrees(angle - 60), endAngle: .degrees(angle), clockwise: false)
+                 startAngle: .degrees(angle - 60),
+                 endAngle: .degrees(angle),
+                 clockwise: false)
         p.closeSubpath()
         return p
     }
 }
 
-// MARK: - Plane marker (title always visible)
+// MARK: - Plane marker
 
 struct PlaneMarker: View {
     let task: FlightTask
     let isSelected: Bool
-    let approachAngle: Double  // direction plane faces (toward center)
+    let approachAngle: Double
 
     var body: some View {
         ZStack {
@@ -292,9 +269,7 @@ struct PlaneMarker: View {
                     .fill(task.urgencyColor.opacity(0.25))
                     .frame(width: 40, height: 40)
             }
-
             VStack(spacing: 3) {
-                // Title always visible
                 Text(task.title)
                     .font(.system(size: isSelected ? 11 : 9,
                                   weight: isSelected ? .bold : .semibold,
@@ -311,8 +286,8 @@ struct PlaneMarker: View {
                     .font(.system(size: task.isLanding ? 20 : 15, weight: .bold))
                     .foregroundColor(task.urgencyColor)
                     .rotationEffect(.degrees(approachAngle + 90))
-                    .shadow(color: task.urgencyColor.opacity(0.8), radius: isSelected ? 7 : 3)
-                    .animation(.easeInOut(duration: 2.0), value: task.urgencyColor)
+                    .shadow(color: task.urgencyColor.opacity(0.8),
+                            radius: isSelected ? 7 : 3)
             }
         }
     }
