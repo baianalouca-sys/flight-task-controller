@@ -155,29 +155,19 @@ struct FlightDetailPanel: View {
 
             // Action buttons
             HStack(spacing: 8) {
-                if !task.isLanding {
-                    Button("CLEAR FOR LANDING") {
-                        vm.setLanding(task)
-                    }
-                    .font(.system(size: 10, weight: .bold, design: .monospaced))
-                    .foregroundColor(.black)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(vm.landingTask == nil ? task.urgencyColor : Color.gray)
-                    .cornerRadius(4)
-                    .disabled(vm.landingTask != nil)
-                } else {
-                    Button("LANDED ✓  INITIATE") {
-                        vm.initiateLanding(task)
-                    }
-                    .font(.system(size: 10, weight: .bold, design: .monospaced))
-                    .foregroundColor(.black)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(Color.yellow)
-                    .cornerRadius(4)
-                    .disabled(vm.landingAnimationID != nil)
+                let isAnimating = vm.landingAnimationID != nil
+                let canLand = !isAnimating
+
+                Button("CLEAR FOR LANDING") {
+                    vm.initiateLanding(task)
                 }
+                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                .foregroundColor(.black)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(canLand ? task.urgencyColor : Color.gray.opacity(0.5))
+                .cornerRadius(4)
+                .disabled(!canLand)
 
                 Spacer()
 

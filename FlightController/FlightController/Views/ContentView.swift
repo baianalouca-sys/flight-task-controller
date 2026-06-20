@@ -117,6 +117,17 @@ struct ContentView: View {
         .sheet(isPresented: $showArchive) {
             ArchiveView(vm: vm)
         }
+        .alert("LANDING COMPLETE",
+               isPresented: Binding(
+                   get: { vm.landingCompletedTitle != nil },
+                   set: { if !$0 { vm.landingCompletedTitle = nil } }
+               )) {
+            Button("OK") { vm.landingCompletedTitle = nil }
+        } message: {
+            if let title = vm.landingCompletedTitle {
+                Text("'\(title)' has landed successfully.\nMission accomplished.")
+            }
+        }
     }
 
     private func legendItem(color: Color, label: String) -> some View {

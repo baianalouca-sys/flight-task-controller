@@ -1,6 +1,6 @@
 import SwiftUI
 
-enum LandingPhase { case approach, rollout, done }
+enum LandingPhase { case approach, rollout, stopped, done }
 
 struct RadarView: View {
     @ObservedObject var vm: TaskViewModel
@@ -8,13 +8,20 @@ struct RadarView: View {
     @State private var planeAngles: [UUID: Double] = [:]
 
     @State private var landingPhase: LandingPhase = .done
-    @State private var landingProgress: Double = 0
-    @State private var rolloutProgress: Double = 0
+    @State private var landingProgress: Double = 0   // 0→1: radar pos → runway threshold
+    @State private var rolloutProgress: Double = 0   // 0→1: threshold → stop point
     @State private var landingOpacity: Double = 1.0
     @State private var landingStartPos: CGPoint = .zero
+    @State private var landingStartRotation: Double = 90  // start facing right by default
+    @State private var landingColor: Color = .green
 
     let radarColor = Color(red: 0.0, green: 0.8, blue: 0.3)
     let bgColor    = Color(red: 0.04, green: 0.09, blue: 0.06)
+
+    // Runway threshold — left entry point relative to center
+    private let thresholdOffset: CGFloat = -44
+    // How far the plane rolls along the runway before stopping
+    private let rolloutDistance: CGFloat = 80
 
     var body: some View {
         GeometryReader { geo in
@@ -23,7 +30,6 @@ struct RadarView: View {
             let radius = size / 2 - 16
 
             ZStack {
-                // Background circle
                 Circle()
                     .fill(bgColor)
                     .frame(width: size - 32, height: size - 32)
@@ -38,7 +44,6 @@ struct RadarView: View {
                         .position(center)
                 }
 
-                // Ring labels — plain function calls, no ForEach needed
                 ringLabel("1d", f: 0.25, center: center, radius: radius)
                 ringLabel("3d", f: 0.50, center: center, radius: radius)
                 ringLabel("5d", f: 0.75, center: center, radius: radius)
@@ -65,7 +70,6 @@ struct RadarView: View {
                     .position(center)
                     .clipShape(Circle().scale(CGFloat((size - 32) / size)))
 
-                // Sweep leading edge
                 Path { p in
                     p.move(to: center)
                     p.addLine(to: CGPoint(
@@ -75,11 +79,10 @@ struct RadarView: View {
                 }
                 .stroke(radarColor.opacity(0.8), lineWidth: 1.5)
 
-                // Horizontal runway at center
                 RunwayView(radarColor: radarColor)
                     .position(center)
 
-                // Static planes
+                // Static planes (not the one currently animating)
                 ForEach(vm.sortedTasks.filter { $0.id != vm.landingAnimationID }) { task in
                     let angle = planeAngles[task.id] ?? stableAngle(for: task)
                     let dist  = radius * CGFloat(1.0 - task.approachFraction * 0.85)
@@ -96,14 +99,15 @@ struct RadarView: View {
                         }
                 }
 
-                // Animated landing plane — position computed outside ViewBuilder
+                // Animated landing plane
                 if vm.landingAnimationID != nil {
                     let pos = landingPosition(center: center)
+                    let rot = landingRotation()
                     Image(systemName: "airplane")
                         .font(.system(size: 18, weight: .bold))
-                        .foregroundColor(.yellow)
-                        .rotationEffect(.degrees(90))
-                        .shadow(color: Color.yellow.opacity(0.9), radius: 8)
+                        .foregroundColor(landingColor)
+                        .rotationEffect(.degrees(rot))
+                        .shadow(color: landingColor.opacity(0.9), radius: 8)
                         .position(pos)
                         .opacity(landingOpacity)
                 }
@@ -116,10 +120,10 @@ struct RadarView: View {
         }
     }
 
-    // MARK: - Computed landing position (imperative — safe outside ViewBuilder)
+    // MARK: - Position & rotation (imperative, outside ViewBuilder)
 
     private func landingPosition(center: CGPoint) -> CGPoint {
-        let thresholdX = center.x - 44
+        let thresholdX = center.x + thresholdOffset
         let thresholdY = center.y
         switch landingPhase {
         case .approach:
@@ -127,8 +131,23 @@ struct RadarView: View {
                 x: landingStartPos.x + (thresholdX - landingStartPos.x) * CGFloat(landingProgress),
                 y: landingStartPos.y + (thresholdY - landingStartPos.y) * CGFloat(landingProgress)
             )
-        case .rollout, .done:
-            return CGPoint(x: thresholdX + CGFloat(rolloutProgress) * 120, y: thresholdY)
+        case .rollout, .stopped, .done:
+            return CGPoint(
+                x: thresholdX + CGFloat(rolloutProgress) * rolloutDistance,
+                y: thresholdY
+            )
+        }
+    }
+
+    // Smoothly rotates from the plane's original approach angle to 90° (facing right)
+    private func landingRotation() -> Double {
+        // The plane icon points up by default; +90 makes it face right
+        let targetRotation = 90.0
+        switch landingPhase {
+        case .approach:
+            return landingStartRotation + (targetRotation - landingStartRotation) * landingProgress
+        case .rollout, .stopped, .done:
+            return targetRotation
         }
     }
 
@@ -138,6 +157,7 @@ struct RadarView: View {
         guard let lid = vm.landingAnimationID,
               let task = vm.tasks.first(where: { $0.id == lid }) else { return }
 
+        // Capture plane's current radar position & color
         let screenW   = UIScreen.main.bounds.width
         let radarSize = min(screenW, 300.0)
         let center    = CGPoint(x: screenW / 2, y: radarSize / 2)
@@ -145,27 +165,38 @@ struct RadarView: View {
 
         let angle = planeAngles[task.id] ?? stableAngle(for: task)
         let dist  = radius * CGFloat(1.0 - task.approachFraction * 0.85)
-        landingStartPos = CGPoint(
+
+        landingStartPos      = CGPoint(
             x: center.x + dist * CGFloat(cos(angle * .pi / 180)),
             y: center.y + dist * CGFloat(sin(angle * .pi / 180))
         )
+        // Starting visual rotation matches what PlaneMarker uses: approachAngle + 90
+        landingStartRotation = (angle + 180) + 90
+        landingColor         = task.urgencyColor
 
         landingPhase    = .approach
         landingProgress = 0
         rolloutProgress = 0
         landingOpacity  = 1.0
 
-        withAnimation(.easeIn(duration: 2.0)) { landingProgress = 1.0 }
+        // Phase 1 — glide to runway threshold, rotating to horizontal (2.2s)
+        withAnimation(.easeIn(duration: 2.2)) { landingProgress = 1.0 }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+        // Phase 2 — roll along runway (1.0s)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
             landingPhase = .rollout
-            withAnimation(.linear(duration: 1.2))  { rolloutProgress = 1.0 }
-            withAnimation(.easeOut(duration: 0.8).delay(0.4)) { landingOpacity = 0 }
+            withAnimation(.easeOut(duration: 1.0)) { rolloutProgress = 1.0 }
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.3) {
-                landingPhase = .done
-                if let t = vm.tasks.first(where: { $0.id == vm.landingAnimationID }) {
-                    vm.completeTask(t)
+            // Phase 3 — stop & fade (0.8s after rollout)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.1) {
+                landingPhase = .stopped
+                withAnimation(.easeIn(duration: 0.7)) { landingOpacity = 0 }
+
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                    landingPhase = .done
+                    if let t = vm.tasks.first(where: { $0.id == vm.landingAnimationID }) {
+                        vm.completeTask(t)
+                    }
                 }
             }
         }
@@ -201,7 +232,6 @@ struct RadarView: View {
 
 struct RunwayView: View {
     let radarColor: Color
-
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 2)
@@ -283,7 +313,7 @@ struct PlaneMarker: View {
                     .fixedSize()
 
                 Image(systemName: "airplane")
-                    .font(.system(size: task.isLanding ? 20 : 15, weight: .bold))
+                    .font(.system(size: 15, weight: .bold))
                     .foregroundColor(task.urgencyColor)
                     .rotationEffect(.degrees(approachAngle + 90))
                     .shadow(color: task.urgencyColor.opacity(0.8),
