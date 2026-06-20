@@ -159,17 +159,16 @@ struct RadarView: View {
     }
 
     /// Heading in degrees — nose always follows the direction of travel.
-    /// The SF Symbol "airplane" points UP (north); rotating +90° makes it point right.
-    /// So heading = atan2(dy, dx) converted to degrees + 90.
+    /// The SF Symbol "airplane" points EAST (right) by default, so no offset needed:
+    /// heading = atan2(dy, dx) in degrees maps directly to the correct rotation.
     private func currentLandingHeading() -> Double {
         switch landingPhase {
         case .approach:
             let tan = bezierTangent(t: landingProgress)
-            // Guard against zero-length tangent at t=0
-            guard abs(tan.x) > 0.001 || abs(tan.y) > 0.001 else { return 90 }
-            return atan2(Double(tan.y), Double(tan.x)) * 180 / .pi + 90
+            guard abs(tan.x) > 0.001 || abs(tan.y) > 0.001 else { return 0 }
+            return atan2(Double(tan.y), Double(tan.x)) * 180 / .pi
         case .rollout, .stopped, .done:
-            return 90  // horizontal, nose right
+            return 0  // 0° = east = nose right
         }
     }
 
@@ -249,11 +248,11 @@ struct RadarView: View {
     // MARK: - Helpers
 
     /// Converts a plane's radar orbit angle into a heading pointing toward center.
-    /// The SF Symbol airplane points up; +90 makes it face right.
-    /// Direction toward center from angle θ is θ+180° (opposite of outward ray).
-    /// Heading = (θ + 180°) + 90° = θ + 270°.
+    /// The SF Symbol "airplane" points EAST (0°) by default.
+    /// Direction toward center from angle θ is θ+180° (opposite outward ray).
+    /// Since the symbol already points east, rotationEffect = θ + 180°.
     private func headingTowardCenter(angle: Double) -> Double {
-        return angle + 270
+        return angle + 180
     }
 
     private func ringLabel(_ text: String, f: CGFloat, center: CGPoint, radius: CGFloat) -> some View {
